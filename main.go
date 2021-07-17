@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/nownabe/plummet/pkg/chibi"
-	"github.com/rs/zerolog/log"
+	"github.com/nownabe/plummet/pkg/slack"
 )
 
 func main() {
@@ -15,10 +15,15 @@ func main() {
 		panic(err)
 	}
 
-	app, err := newApp()
-	if err != nil {
-		log.Fatal().Err(err).Msg(err.Error())
+	av := newAlphaVantage(cfg.AlphaVantageAPIKey)
+	s := slack.New(cfg.SlackToken)
+
+	ap := &app{
+		symbols:      cfg.Symbols,
+		slackChannel: cfg.SlackChannel,
+		alphaVantage: av,
+		slack:        s,
 	}
 
-	chibi.Serve(app.handler(), cfg.Port)
+	chibi.Serve(ap.handler(), cfg.Port)
 }

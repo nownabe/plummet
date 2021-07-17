@@ -5,9 +5,13 @@ import (
 )
 
 type config struct {
-	LogLevel  string `default:"info" split_words:"true"`
-	LogPretty bool   `default:"false" split_words:"true"`
-	Port      string `default:"8080" envconfig:"PORT"`
+	AlphaVantageAPIKey string `required:"true" split_words:"true"`
+	LogLevel           string `default:"info" split_words:"true"`
+	LogPretty          bool   `default:"false" split_words:"true"`
+	Port               string `default:"8080" envconfig:"PORT"`
+	SlackToken         string `required:"true" split_words:"true"`
+	SlackChannel       string `required:"true" split_words:"true"`
+	Symbols            []string
 }
 
 func initConfig() (*config, error) {
