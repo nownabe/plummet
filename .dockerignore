@@ -1,0 +1,6 @@
+Dockerfile
+.envrc
+.git
+.gitignore
+image.sh
+LICENSE
