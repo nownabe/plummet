@@ -85,7 +85,7 @@ func (a *app) buildAttachment(ctx context.Context, symbolAndMarket string) (*sla
 		return attachment, nil
 	}
 
-	attachment.Text = ts.TimeSeries[dateKey].AdjustedClose
+	attachment.Text = ts.TimeSeries[dateKey].Close
 	attachment.Color = getAttachmentColor(ts, date)
 
 	fields := []*slack.AttachmentField{}
@@ -151,13 +151,13 @@ func compare(ts *stockTimeSeries, date1, date2 string) (float64, float64, error)
 		return 0, 0, fmt.Errorf("%s doesn't exist", date2)
 	}
 
-	date1Close, err := strconv.ParseFloat(date1Item.AdjustedClose, 64)
+	date1Close, err := strconv.ParseFloat(date1Item.Close, 64)
 	if err != nil {
 		log.Err(err).Msg(err.Error())
 		return 0, 0, err
 	}
 
-	date2Close, err := strconv.ParseFloat(date2Item.AdjustedClose, 64)
+	date2Close, err := strconv.ParseFloat(date2Item.Close, 64)
 	if err != nil {
 		log.Err(err).Msg(err.Error())
 		return 0, 0, err
