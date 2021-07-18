@@ -24,12 +24,12 @@ func New(token string) *Client {
 }
 
 type Attachment struct {
-	Color     string            `json:"color,omitempty"`
-	Fallback  string            `json:"fallback,omitempty"`
-	Fields    []AttachmentField `json:"fields,omitempty"`
-	Text      string            `json:"text,omitempty"`
-	Title     string            `json:"title,omitempty"`
-	TitleLink string            `json:"title_link,omitempty"`
+	Color     string             `json:"color,omitempty"`
+	Fallback  string             `json:"fallback,omitempty"`
+	Fields    []*AttachmentField `json:"fields,omitempty"`
+	Text      string             `json:"text,omitempty"`
+	Title     string             `json:"title,omitempty"`
+	TitleLink string             `json:"title_link,omitempty"`
 }
 
 type AttachmentField struct {
@@ -44,11 +44,11 @@ type apiResponse struct {
 }
 
 type ChatPostMessageReq struct {
-	Channel     string       `json:"channel,omitempty"`
-	IconEmoji   string       `json:"icon_emoji,omitempty"`
-	Text        string       `json:"text,omitempty"`
-	Username    string       `json:"username,omitempty"`
-	Attachments []Attachment `json:"attachments,omitempty"`
+	Channel     string        `json:"channel,omitempty"`
+	IconEmoji   string        `json:"icon_emoji,omitempty"`
+	Text        string        `json:"text,omitempty"`
+	Username    string        `json:"username,omitempty"`
+	Attachments []*Attachment `json:"attachments,omitempty"`
 }
 
 func (c *Client) ChatPostMessage(ctx context.Context, r *ChatPostMessageReq) error {
