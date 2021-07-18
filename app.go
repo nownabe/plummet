@@ -86,6 +86,7 @@ func (a *app) buildAttachment(ctx context.Context, symbolAndMarket string) (*sla
 	}
 
 	attachment.Text = ts.TimeSeries[dateKey].AdjustedClose
+	attachment.Color = getAttachmentColor(ts, date)
 
 	fields := []*slack.AttachmentField{}
 
@@ -107,31 +108,13 @@ func (a *app) buildAttachment(ctx context.Context, symbolAndMarket string) (*sla
 }
 
 func (a *app) buildAttachmentField(
-	timeSeries *stockTimeSeries, date1t, date2t time.Time) (*slack.AttachmentField, error) {
+	ts *stockTimeSeries, date1t, date2t time.Time) (*slack.AttachmentField, error) {
 
 	date1 := date1t.Format("2006-01-02")
 	date2 := date2t.Format("2006-01-02")
 
-	date1Item, ok1 := timeSeries.TimeSeries[date1]
-	date2Item, ok2 := timeSeries.TimeSeries[date2]
-
-	if !ok1 {
-		return nil, fmt.Errorf("%s doesn't exist", date1)
-	}
-
-	if !ok2 {
-		return nil, fmt.Errorf("%s doesn't exist", date2)
-	}
-
-	date1Close, err := strconv.ParseFloat(date1Item.AdjustedClose, 64)
+	date1Close, date2Close, err := compare(ts, date1, date2)
 	if err != nil {
-		log.Err(err).Msg(err.Error())
-		return nil, err
-	}
-
-	date2Close, err := strconv.ParseFloat(date2Item.AdjustedClose, 64)
-	if err != nil {
-		log.Err(err).Msg(err.Error())
 		return nil, err
 	}
 
@@ -154,6 +137,54 @@ func (a *app) buildAttachmentField(
 		Value: fmt.Sprintf("%s *`%2.2f%%`* : `%4.2f` ⇨ `%4.2f`", icon, rate, date2Close, date1Close),
 		Short: false,
 	}, nil
+}
+
+func compare(ts *stockTimeSeries, date1, date2 string) (float64, float64, error) {
+	date1Item, ok1 := ts.TimeSeries[date1]
+	date2Item, ok2 := ts.TimeSeries[date2]
+
+	if !ok1 {
+		return 0, 0, fmt.Errorf("%s doesn't exist", date1)
+	}
+
+	if !ok2 {
+		return 0, 0, fmt.Errorf("%s doesn't exist", date2)
+	}
+
+	date1Close, err := strconv.ParseFloat(date1Item.AdjustedClose, 64)
+	if err != nil {
+		log.Err(err).Msg(err.Error())
+		return 0, 0, err
+	}
+
+	date2Close, err := strconv.ParseFloat(date2Item.AdjustedClose, 64)
+	if err != nil {
+		log.Err(err).Msg(err.Error())
+		return 0, 0, err
+	}
+
+	return date1Close, date2Close, nil
+}
+
+func getAttachmentColor(ts *stockTimeSeries, date time.Time) string {
+	date2 := date.Add(-7 * 24 * time.Hour)
+
+	d1Close, d2Close, err := compare(ts, date.Format("2006-01-02"), date2.Format("2006-01-02"))
+	if err != nil {
+		return ""
+	}
+
+	rate := (d1Close - d2Close) / d2Close * 100
+
+	if rate > 0 {
+		return "good"
+	} else if rate <= -3 {
+		return "warning"
+	} else if rate <= -5 {
+		return "danger"
+	}
+
+	return ""
 }
 
 func httpError(w http.ResponseWriter, status int) {
