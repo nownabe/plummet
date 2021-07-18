@@ -38,7 +38,7 @@ func (a *app) handle(w http.ResponseWriter, r *http.Request) {
 		attachment, err := a.buildAttachment(r.Context(), symbolAndMarket)
 		if err != nil {
 			log.Err(err).Msgf("failed build attachment for %s", symbolAndMarket)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			httpError(w, http.StatusInternalServerError)
 			return
 		}
 
@@ -50,12 +50,12 @@ func (a *app) handle(w http.ResponseWriter, r *http.Request) {
 		IconEmoji:   ":chart_with_upwards_trend:",
 		Username:    "Weekly Trends",
 		Attachments: attachments,
-		Text:        time.Now().Format("2006-01-02"),
+		Text:        ":chart_with_upwards_trend: *Today's fluctuation rate (" + time.Now().Format("2006-01-02") + ")* :chart_with_downwards_trend:",
 	}
 
 	if err := a.slack.ChatPostMessage(r.Context(), req); err != nil {
 		log.Err(err).Msg("failed to post message")
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		httpError(w, http.StatusInternalServerError)
 		return
 	}
 
@@ -71,46 +71,56 @@ func (a *app) buildAttachment(ctx context.Context, symbolAndMarket string) (*sla
 		return nil, fmt.Errorf("failed to get time series of %s: %w", symbol, err)
 	}
 
+	attachment := &slack.Attachment{
+		Title:     symbol,
+		TitleLink: "https://google.com/finance/quote/" + symbolAndMarket,
+	}
+
+	date := time.Now().In(a.location)
+	dateKey := date.Format("2006-01-02")
+
+	if _, ok := ts.TimeSeries[dateKey]; !ok {
+		log.Info().Msgf("%s has no data at %s", symbolAndMarket, dateKey)
+		attachment.Text = "no data"
+		return attachment, nil
+	}
+
+	attachment.Text = ts.TimeSeries[dateKey].AdjustedClose
+
 	fields := []*slack.AttachmentField{}
 
-	date := time.Now().Add(-7 * 24 * time.Hour)
+	for i := 1; i <= 7; i++ {
+		date2 := date.Add(time.Duration(-i) * 24 * time.Hour)
 
-	for ; date.Before(time.Now()) || date.Equal(time.Now()); date = date.Add(24 * time.Hour) {
-		lastWeek := date.Add(-7 * 24 * time.Hour)
-
-		field, err := a.buildAttachmentField(ts, date, lastWeek)
+		field, err := a.buildAttachmentField(ts, date, date2)
 		if err != nil {
-			log.Warn().Err(err).Msg(err.Error())
+			log.Warn().Err(err).Msgf("failed to construct field for %s", symbolAndMarket)
 			continue
 		}
 
 		fields = append([]*slack.AttachmentField{field}, fields...)
 	}
 
-	attachment := &slack.Attachment{
-		Title:     symbol,
-		TitleLink: "https://google.com/finance/quote/" + symbolAndMarket,
-		Fields:    fields,
-	}
+	attachment.Fields = fields
 
 	return attachment, nil
 }
 
 func (a *app) buildAttachmentField(
-	timeSeries *stockTimeSeries, date1, date2 time.Time) (*slack.AttachmentField, error) {
+	timeSeries *stockTimeSeries, date1t, date2t time.Time) (*slack.AttachmentField, error) {
 
-	date1Key := date1.Format("2006-01-02")
-	date2Key := date2.Format("2006-01-02")
+	date1 := date1t.Format("2006-01-02")
+	date2 := date2t.Format("2006-01-02")
 
-	date1Item, ok1 := timeSeries.TimeSeries[date1Key]
-	date2Item, ok2 := timeSeries.TimeSeries[date2Key]
+	date1Item, ok1 := timeSeries.TimeSeries[date1]
+	date2Item, ok2 := timeSeries.TimeSeries[date2]
 
 	if !ok1 {
-		return nil, fmt.Errorf("%s doesn't exist", date1Key)
+		return nil, fmt.Errorf("%s doesn't exist", date1)
 	}
 
 	if !ok2 {
-		return nil, fmt.Errorf("%s doesn't exist", date2Key)
+		return nil, fmt.Errorf("%s doesn't exist", date2)
 	}
 
 	date1Close, err := strconv.ParseFloat(date1Item.AdjustedClose, 64)
@@ -125,11 +135,27 @@ func (a *app) buildAttachmentField(
 		return nil, err
 	}
 
+	diffDays := int(date1t.Sub(date2t).Hours()) / 24
+
 	rate := (date1Close - date2Close) / date2Close * 100
 
+	var icon string
+
+	if date1Close > date2Close {
+		icon = ":arrow_upper_right:"
+	} else if date1Close < date2Close {
+		icon = ":arrow_lower_right:"
+	} else {
+		icon = ":arrow_right:"
+	}
+
 	return &slack.AttachmentField{
-		Title: fmt.Sprintf("%s => %s", date2Key, date1Key),
-		Value: fmt.Sprintf("%4.2f => %4.2f (%.2f%%)", date2Close, date1Close, rate),
-		Short: true,
+		Title: fmt.Sprintf("%d days (%s)", diffDays, date2),
+		Value: fmt.Sprintf("%s *`%2.2f%%`* : `%4.2f` ⇨ `%4.2f`", icon, rate, date2Close, date1Close),
+		Short: false,
 	}, nil
+}
+
+func httpError(w http.ResponseWriter, status int) {
+	http.Error(w, http.StatusText(status), status)
 }
