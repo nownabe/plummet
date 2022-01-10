@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	alphaVantageHost = "www.alphavantage.co"
+	alphaVantageHost     = "www.alphavantage.co"
+	alphaVantageFunction = "TIME_SERIES_DAILY"
 )
 
 type stockMetadata struct {
@@ -21,14 +22,11 @@ type stockMetadata struct {
 }
 
 type stockTimeSeriesItem struct {
-	Open             string `json:"1. open"`
-	High             string `json:"2. high"`
-	Low              string `json:"3. low"`
-	Close            string `json:"4. close"`
-	AdjustedClose    string `json:"5. adjusted close"`
-	Volume           string `json:"6. volume"`
-	DividendAmount   string `json:"7. dividend amount"`
-	SplitCoefficient string `json:"8. split coefficient"`
+	Open   string `json:"1. open"`
+	High   string `json:"2. high"`
+	Low    string `json:"3. low"`
+	Close  string `json:"4. close"`
+	Volume string `json:"5. volume"`
 }
 
 type stockTimeSeries struct {
@@ -48,12 +46,13 @@ func newAlphaVantage(apiKey string) *alphaVantage {
 	}
 }
 
-func (av *alphaVantage) timeSeriesDailyAdjusted(
+func (av *alphaVantage) timeSeriesDaily(
 	ctx context.Context, symbol string) (*stockTimeSeries, error) {
 
 	url := fmt.Sprintf(
-		"https://%s/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=%s&apikey=%s",
+		"https://%s/query?function=%s&symbol=%s&apikey=%s",
 		alphaVantageHost,
+		alphaVantageFunction,
 		symbol,
 		av.apiKey,
 	)
