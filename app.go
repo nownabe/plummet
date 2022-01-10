@@ -65,7 +65,7 @@ func (a *app) handle(w http.ResponseWriter, r *http.Request) {
 func (a *app) buildAttachment(ctx context.Context, symbolAndMarket string) (*slack.Attachment, error) {
 	symbol := strings.Split(symbolAndMarket, ":")[0]
 
-	ts, err := a.timeSeriesDailyAdjusted(ctx, symbol)
+	ts, err := a.timeSeriesDaily(ctx, symbol)
 	if err != nil {
 		log.Err(err).Msgf("failed to get time series of %s", symbol)
 		return nil, fmt.Errorf("failed to get time series of %s: %w", symbol, err)
